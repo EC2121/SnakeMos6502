@@ -1,9 +1,14 @@
 .org $8000
 .define direction $03FF
-.define snakeHead $00
-.define snakeLength $03FE
-.define apple $03FD
-
+.define snakeLength $03FE 
+.define accumulator $03FD
+.define snakeHead $00 
+.define apple $03FD ; apple pos
+;Values of directions
+.define up #1
+.define down #2
+.define left #3
+.define right #4
 
 
 start:
@@ -12,12 +17,17 @@ JMP init
 gameLoop:
 JSR input
 JSR headUpdate
-LDX #1
 JSR bodyUpdate
 JSR draw
 JSR checkCollision
+JSR increseAccumulator
 JMP gameLoop
 
+
+increseAccumulator:
+LDA accumulator
+ADC #1
+STA accumulator
 
 End:
 Jmp End
@@ -33,10 +43,9 @@ init:
 LDX #$FF
 TXS
 LDX #0
-
 LDA #4
 STA snakeLength ; real value is decremented by 1, in this case it will be 3
-LDA #4
+LDA #2
 STA direction
 LDA #158
 STA apple
@@ -51,14 +60,14 @@ JMP gameLoop
 
 collide:
 JSR drawNewPiece
+
 LDX snakeLength
 INX 
-TXA
-STA snakeLength
+STX snakeLength
+
+; Pseudo Random
 LDA apple
-ADC snakeLength
-ADC snakeHead
-ADC direction
+ADC accumulator
 STA apple
 RTS
 
@@ -73,15 +82,17 @@ RTS
 
 
 draw:
+; Draw apple
 LDX apple
 LDA #4
 STA $0200,X
-LDA snakeLength
-TAX 
+;Cancel last piece
+LDX snakeLength
 DEX
 LDY snakeHead,X
 LDA #0
 STA $0200,Y
+; Draw head
 LDX snakeHead
 LDA #1
 STA $0200,X
@@ -89,17 +100,22 @@ RTS
 
 
 bodyUpdate:
-TYA
+LDX #0
+innerLoop:
+
+INX
+TYA ; in the first cicle Y has the OLD value of snakeHead, see HeadUpdate
 LDY snakeHead,X
 STA snakeHead,X
 LDA snakeHead
+
+;Check Collision with body
 CMP snakeHead,X
 BEQ gameOver
 
-INX
-TXA
-CMP snakeLength
-BNE bodyUpdate
+TXA 
+CMP snakeLength ;Check if all pieces have been updated
+BNE innerLoop ; if not loop again
 RTS
 
 
@@ -108,13 +124,16 @@ JMP End
 
 headUpdate:
 LDA direction
-CMP #1
+CMP up
 BEQ goUp
-CMP #2
+
+CMP down
 BEQ goDwn
-CMP #3
+
+CMP left
 BEQ goLft
-CMP #4
+
+CMP right
 BEQ goRth
 RTS
 
@@ -125,7 +144,6 @@ CLC
 ADC #1
 STA snakeHead
 RTS
-
 
 goLft:
 LDA snakeHead
@@ -141,7 +159,6 @@ CLC
 ADC #16
 STA snakeHead
 RTS
-
 
 goUp:
 LDA snakeHead
@@ -165,45 +182,45 @@ RTS
 
 moveUp:
 LDA direction
-CMP #2
+CMP down ;check illegal moves
 BNE dirUp
 RTS
 
 moveDown:
 LDA direction
-CMP #1
+CMP up ;check illegal moves
 BNE dirDown
 RTS
 
 moveLeft:
 LDA direction
-CMP #4
+CMP right ;check illegal moves
 BNE dirLeft
 RTS
 
 moveRight:
-LDA dirDown
-CMP #3
+LDA direction
+CMP left ;check illegal moves
 BNE dirRight
 RTS
 
 dirRight:
-LDA #4
+LDA right
 STA direction
 RTS
 
 dirLeft:
-LDA #3
+LDA left
 STA direction
 RTS
 
 dirDown:
-LDA #2
+LDA down
 STA direction
 RTS
 
 dirUp:
-LDA #1
+LDA up
 STA direction
 RTS
 
